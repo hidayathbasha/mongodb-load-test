@@ -1,0 +1,8 @@
+.classpath
+.project
+.settings/
+target/
+err.log
+console.log
+lib/mongodb-server-tunning-1.0.jar
+logs/

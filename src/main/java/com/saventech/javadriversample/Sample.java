@@ -35,6 +35,7 @@ public class Sample {
 		int mongoPort = 27017;
 		String mongoDbName = "test";
 		int connections = 10;
+		int maxParallelConn = 10;
 
 		// load the values from the properties file
 		// if the file is supplied through option -f or --file
@@ -48,7 +49,7 @@ public class Sample {
 					mongoPort = Integer.parseInt(props.getProperty("mongodb.port"));
 					mongoDbName = props.getProperty("mongodb.db");
 					connections = Integer.parseInt(props.getProperty("mongodb.connections"));
-
+					maxParallelConn = Integer.parseInt(props.getProperty("max.parallel.connections"));
 					input.close();
 				} catch (FileNotFoundException e) {
 					logger.warning("the properties file doesn't exist");
@@ -71,74 +72,99 @@ public class Sample {
 				mongoDbName = args[++i];
 			} else if (args[i].equals("-c") || args[i].equals("--connections")) {
 				connections = Integer.parseInt(args[++i]);
+			} else if (args[i].equals("-m") || args[i].equals("--max-ll-connections")) {
+				maxParallelConn = Integer.parseInt(args[++i]);
 			}
 		}
 
-		logger.info(" mongo host:" + mongoHost);
-		logger.info(" mongo port:" + mongoPort);
-		logger.info("   mongo db:" + mongoDbName);
+		logger.info("              mongo host:" + mongoHost);
+		logger.info("              mongo port:" + mongoPort);
+		logger.info("                mongo db:" + mongoDbName);
+		logger.info("       mongo connections:" + connections);
+		logger.info("max parallel connections:" + maxParallelConn);
 
+		final String fMongoHost = mongoHost;
+		final int fMongoPort = mongoPort;
+		final String fMongoDbName = mongoDbName;
+		final int fConnections = connections;
+		
 		try {
 			Thread.sleep(30000);
 		} catch (InterruptedException e) {
 
 		}
 
-		MongoClient mongoClient = null;
+		for (int parallelConn = 0; parallelConn < maxParallelConn; parallelConn++) {
+			
+			final int pConnIdx = parallelConn;
 
-		for (int conni = 0; conni < connections; conni++) {
-			mongoClient = new MongoClient(mongoHost, mongoPort);
+			new Thread(new Runnable() {
 
-			MongoDatabase db = mongoClient.getDatabase(mongoDbName);
-
-			MongoCollection<Document> collection = db.getCollection("restaurants");
-
-			logger.info("Connection#" + conni);
-
-			List<Document> documents = new ArrayList<Document>();
-			for (int i = 0; i < 100; i++) {
-				Document doc = new Document("i", i);
-				try {
-					int initIdx = (int) Math.round(Math.random() * 21);
-					doc.append("name", "ABCDEFGHIJKLMNOPQRSTUVWZYZ".substring(initIdx,
-							initIdx + (int) Math.round(Math.random() * 4)));
-					initIdx = (int) Math.round(Math.random() * 21);
-					doc.append("address", "ABCDEFGHIJKLMNOPQRSTUVWZYZ".substring(initIdx,
-							initIdx + (int) Math.round(Math.random() * 4)));
-				} catch (StringIndexOutOfBoundsException siobe) {
-				}
-				doc.append("dob", Math.round(Math.random() * 31) + "-" + Math.round(Math.random() * 12) + "-"
-						+ (1975 + Math.round(Math.random() * 40)));
-				documents.add(doc);
-			}
-
-			collection.insertMany(documents);
-
-			FindIterable<Document> iterable = collection
-					.find(or(eq("name", "ABCD"), regex("dob", Pattern.compile(".*2017"))));
-
-			iterable.forEach(new Block<Document>() {
 				@Override
-				public void apply(final Document doc) {
-					logger.info(doc.get("name") + "," + doc.get("address") + "," + doc.get("dob"));
+				public void run() {
+					Thread.currentThread().setName("app-thread-" + pConnIdx);
+
+					MongoClient mongoClient = null;
+
+					for (int conni = 0; conni < fConnections; conni++) {
+						mongoClient = new MongoClient(fMongoHost, fMongoPort);
+
+						MongoDatabase db = mongoClient.getDatabase(fMongoDbName);
+
+						MongoCollection<Document> collection = db.getCollection("restaurants");
+
+						logger.info("thread#" + pConnIdx + ", Connection#" + conni);
+
+						List<Document> documents = new ArrayList<Document>();
+						for (int i = 0; i < 10; i++) {
+							Document doc = new Document("i", i);
+							try {
+								int initIdx = (int) Math.round(Math.random() * 21);
+								doc.append("name", "ABCDEFGHIJKLMNOPQRSTUVWZYZ".substring(initIdx,
+										initIdx + 1 + (int) Math.round(Math.random() * 4)));
+								initIdx = (int) Math.round(Math.random() * 21);
+								doc.append("address", "ABCDEFGHIJKLMNOPQRSTUVWZYZ".substring(initIdx,
+										initIdx + 1 + (int) Math.round(Math.random() * 4)));
+							} catch (StringIndexOutOfBoundsException siobe) {
+							}
+							doc.append("dob", Math.round(Math.random() * 31) + "-" + Math.round(Math.random() * 12)
+									+ "-" + (1975 + Math.round(Math.random() * 40)));
+							documents.add(doc);
+						}
+
+						collection.insertMany(documents);
+
+						FindIterable<Document> iterable = collection
+								.find(or(eq("name", "ABCD"), regex("dob", Pattern.compile(".*1987"))));
+
+						iterable.forEach(new Block<Document>() {
+							@Override
+							public void apply(final Document doc) {
+								logger.info(doc.get("name") + "," + doc.get("address") + "," + doc.get("dob"));
+							}
+						});
+
+						try {
+							Thread.sleep(5000);
+						} catch (InterruptedException e) {
+
+						}
+
+						mongoClient.close();
+					}
+
+					try {
+						Thread.sleep(30000);
+					} catch (InterruptedException e) {
+
+					}
+
+					mongoClient.close();
+
 				}
-			});
 
-			try {
-				Thread.sleep(5000);
-			} catch (InterruptedException e) {
-
-			}
-
-			mongoClient.close();
+			}).start();
 		}
 
-		try {
-			Thread.sleep(30000);
-		} catch (InterruptedException e) {
-
-		}
-
-		mongoClient.close();
 	}
 }

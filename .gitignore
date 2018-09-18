@@ -4,5 +4,6 @@
 target/
 err.log
 console.log
+gclogs.log
 lib/mongodb-server-tunning-1.0.jar
 logs/

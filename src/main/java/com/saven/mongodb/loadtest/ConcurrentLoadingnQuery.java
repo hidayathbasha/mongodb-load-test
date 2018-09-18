@@ -1,4 +1,4 @@
-package com.saventech.javadriversample;
+package com.saven.mongodb.loadtest;
 
 import static com.mongodb.client.model.Filters.eq;
 import static com.mongodb.client.model.Filters.or;
@@ -26,9 +26,9 @@ import com.mongodb.client.MongoDatabase;
  *
  * @author Hidayath
  */
-public class Sample {
+public class ConcurrentLoadingnQuery {
 
-	private static final Logger logger = Logger.getLogger("MongoDB-Server-Tuning");
+	private static final Logger logger = Logger.getLogger("ConcurrentLoadingnQuery");
 
 	public static void main(String args[]) {
 		String mongoHost = "127.0.0.1";
@@ -137,10 +137,12 @@ public class Sample {
 						FindIterable<Document> iterable = collection
 								.find(or(eq("name", "ABCD"), regex("dob", Pattern.compile(".*1987"))));
 
+						final int fpConnIdx = pConnIdx;		
+						final int fconni = conni;		
 						iterable.forEach(new Block<Document>() {
 							@Override
 							public void apply(final Document doc) {
-								logger.info(doc.get("name") + "," + doc.get("address") + "," + doc.get("dob"));
+								logger.info("[thread#" + fpConnIdx + ", Connection#" + fconni + "] record:" + doc.get("name") + "," + doc.get("address") + "," + doc.get("dob"));
 							}
 						});
 

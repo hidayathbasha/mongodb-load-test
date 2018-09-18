@@ -29,10 +29,11 @@ export CLASSPATH
 export JAVA_OPTS
 
 java $JAVA_OPTS com.saven.mongodb.loadtest.ConcurrentLoadingnQuery \
-						--file ${APP}/conf/config.properties \
-						> ${APP}/console.log 2> ${APP}/err.log
-						
-#						--host 192.168.195.19 \
-#						--db test \
-# 					    --connections 20 \
-#						--max-ll-connections 20 \
+                        --file ${APP}/conf/config.properties \
+                        > ${APP}/console.log 2> ${APP}/err.log
+
+#                        --host 192.168.195.19 \
+#                        --db test \
+#                        --connections 20 \
+#                        --max-ll-connections 20 \
+

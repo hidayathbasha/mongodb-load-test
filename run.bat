@@ -1,6 +1,6 @@
 @echo off
  
-set CLASSPATH=%CLASSPATH%;D:/E/apache-maven-repo/.m2/repository/org/mongodb/mongo-java-driver/3.5.0/mongo-java-driver-3.5.0.jar
+set CLASSPATH=%CLASSPATH%;%MAVEN_REPO%/org/mongodb/mongo-java-driver/3.5.0/mongo-java-driver-3.5.0.jar
 set CLASSPATH=%CLASSPATH%;lib/mongodb-server-tunning-1.0.jar
 
 set CLASSPATH=%CLASSPATH%;conf/
@@ -26,8 +26,9 @@ rem set "JAVA_OPTS=%JAVA_OPTS% -Djava.rmi.server.codebase=file:///D:/whereever/l
 java %JAVA_OPTS% com.saven.mongodb.loadtest.ConcurrentLoadingnQuery ^
 						--file ./conf/config.properties ^
 						> console.log 2> err.log
-rem						--host 192.168.195.19 ^
+rem						--host 127.0.0.1 ^
 rem						--db test ^
+rem						--collection restaurant ^
 rem 					--connections 20 ^
 rem 					--max-ll-connections 20 ^
 

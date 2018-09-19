@@ -2,6 +2,7 @@
 
 APP=/usr/share/mongodb-server-load
 
+#Get it from the ${MAVEN_REPO}/org/mongodb/mongo-java-driver/3.5.0/
 CLASSPATH=$CLASSPATH:${APP}/lib/mongo-java-driver-3.5.0.jar
 CLASSPATH=$CLASSPATH:${APP}/lib/mongodb-server-tunning-1.0.jar
 
@@ -32,8 +33,9 @@ java $JAVA_OPTS com.saven.mongodb.loadtest.ConcurrentLoadingnQuery \
                         --file ${APP}/conf/config.properties \
                         > ${APP}/console.log 2> ${APP}/err.log
 
-#                        --host 192.168.195.19 \
+#                        --host 127.0.0.1 \
 #                        --db test \
+#                        --collection restaurant \
 #                        --connections 20 \
 #                        --max-ll-connections 20 \
 

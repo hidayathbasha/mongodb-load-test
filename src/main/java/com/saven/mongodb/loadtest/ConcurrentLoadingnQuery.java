@@ -22,7 +22,19 @@ import com.mongodb.client.MongoCollection;
 import com.mongodb.client.MongoDatabase;
 
 /**
- * source: https://docs.mongodb.com/getting-started/java/query/
+ * 
+ * This application will populate a collection and query it on each mongo
+ * connection There will be n no. of threads configured by
+ * max.parallel.connections and each thread will have m no. of mongo connections
+ * configured by mongodb.connections.
+ * 
+ * Eg. if mongodb.connections = 10 and max.parallel.connections = 20, then 10 *
+ * 20 * 10 records will be inserted into the mongo collection
+ * 
+ * references:
+ * https://docs.mongodb.com/manual/reference/configuration-options/#net.maxIncomingConnections
+ * https://docs.mongodb.com/manual/reference/ulimit/#ulimit
+ * https://docs.mongodb.com/getting-started/java/query/
  *
  * @author Hidayath
  */
@@ -36,6 +48,7 @@ public class ConcurrentLoadingnQuery {
 		String mongoDbName = "test";
 		int connections = 10;
 		int maxParallelConn = 10;
+		String mongoCollectionName = "restaurants";
 
 		// load the values from the properties file
 		// if the file is supplied through option -f or --file
@@ -50,6 +63,7 @@ public class ConcurrentLoadingnQuery {
 					mongoDbName = props.getProperty("mongodb.db");
 					connections = Integer.parseInt(props.getProperty("mongodb.connections"));
 					maxParallelConn = Integer.parseInt(props.getProperty("max.parallel.connections"));
+					mongoCollectionName = props.getProperty("mongodb.collection");
 					input.close();
 				} catch (FileNotFoundException e) {
 					logger.warning("the properties file doesn't exist");
@@ -74,12 +88,15 @@ public class ConcurrentLoadingnQuery {
 				connections = Integer.parseInt(args[++i]);
 			} else if (args[i].equals("-m") || args[i].equals("--max-ll-connections")) {
 				maxParallelConn = Integer.parseInt(args[++i]);
+			} else if (args[i].equals("-o") || args[i].equals("--collection")) {
+				mongoCollectionName = args[++i];
 			}
 		}
 
 		logger.info("              mongo host:" + mongoHost);
 		logger.info("              mongo port:" + mongoPort);
 		logger.info("                mongo db:" + mongoDbName);
+		logger.info("        mongo collection:" + mongoCollectionName);
 		logger.info("       mongo connections:" + connections);
 		logger.info("max parallel connections:" + maxParallelConn);
 
@@ -87,17 +104,23 @@ public class ConcurrentLoadingnQuery {
 		final int fMongoPort = mongoPort;
 		final String fMongoDbName = mongoDbName;
 		final int fConnections = connections;
-		
+		final String fMongoCollectionName = mongoCollectionName;
+
+		// a 30 seconds of before starting the actual action
+		// in this time user can open jvisualvm or jconsole
+		// and watch the application performance
 		try {
 			Thread.sleep(30000);
 		} catch (InterruptedException e) {
 
 		}
 
+		// run for given no. of max.parallel.connections
 		for (int parallelConn = 0; parallelConn < maxParallelConn; parallelConn++) {
-			
+
 			final int pConnIdx = parallelConn;
 
+			// start the anonymous thread
 			new Thread(new Runnable() {
 
 				@Override
@@ -106,16 +129,19 @@ public class ConcurrentLoadingnQuery {
 
 					MongoClient mongoClient = null;
 
+					// run for given no. of mongodb.connections
 					for (int conni = 0; conni < fConnections; conni++) {
 						mongoClient = new MongoClient(fMongoHost, fMongoPort);
 
 						MongoDatabase db = mongoClient.getDatabase(fMongoDbName);
 
-						MongoCollection<Document> collection = db.getCollection("restaurants");
+						MongoCollection<Document> collection = db.getCollection(fMongoCollectionName);
 
 						logger.info("thread#" + pConnIdx + ", Connection#" + conni);
 
 						List<Document> documents = new ArrayList<Document>();
+
+						// insert 10 records
 						for (int i = 0; i < 10; i++) {
 							Document doc = new Document("i", i);
 							try {
@@ -134,18 +160,23 @@ public class ConcurrentLoadingnQuery {
 
 						collection.insertMany(documents);
 
+						// make a simple query
+						// get me records with name as "ABCD" or
+						// dob is 1987
 						FindIterable<Document> iterable = collection
 								.find(or(eq("name", "ABCD"), regex("dob", Pattern.compile(".*1987"))));
 
-						final int fpConnIdx = pConnIdx;		
-						final int fconni = conni;		
+						final int fpConnIdx = pConnIdx;
+						final int fconni = conni;
 						iterable.forEach(new Block<Document>() {
 							@Override
 							public void apply(final Document doc) {
-								logger.info("[thread#" + fpConnIdx + ", Connection#" + fconni + "] record:" + doc.get("name") + "," + doc.get("address") + "," + doc.get("dob"));
+								logger.info("[thread#" + fpConnIdx + ", Connection#" + fconni + "] record:"
+										+ doc.get("name") + "," + doc.get("address") + "," + doc.get("dob"));
 							}
 						});
 
+						// a 5 seconds of delay before creating another connections
 						try {
 							Thread.sleep(5000);
 						} catch (InterruptedException e) {
@@ -155,13 +186,15 @@ public class ConcurrentLoadingnQuery {
 						mongoClient.close();
 					}
 
+					// a 30 seconds of delay before exiting the thread
 					try {
 						Thread.sleep(30000);
 					} catch (InterruptedException e) {
 
 					}
 
-					mongoClient.close();
+					if (mongoClient != null)
+						mongoClient.close();
 
 				}
 
